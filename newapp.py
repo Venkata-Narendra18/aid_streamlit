@@ -4,12 +4,9 @@ from openai import OpenAI
 import os
 from io import StringIO
 import base64
-from dotenv import load_dotenv
-load_dotenv()
 
-
-# --- CHANGE 1: Hardcode your API Key here ---
-OPENAI_API_KEY = "YOUR_OPENAI_API_KEY_HERE"
+# ✅ Set API key from environment variable
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # Set page configuration
 st.set_page_config(
@@ -20,8 +17,7 @@ st.set_page_config(
 )
 
 # Custom CSS Styling
-st.markdown("""
-<style>
+st.markdown("""<style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     .stApp {
         background: linear-gradient(135deg, #1c2b4d 0%, #3d6cb9 100%);
@@ -121,19 +117,20 @@ st.markdown("""
     ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.1); }
     ::-webkit-scrollbar-thumb { background: #4facfe; border-radius: 10px; }
     ::-webkit-scrollbar-thumb:hover { background: #00f2fe; }
-</style>
-""", unsafe_allow_html=True)
+</style>""", unsafe_allow_html=True)
 
-def initialize_openai_client(api_key):
+
+# ✅ Use environment-based client initializer
+def initialize_openai_client():
     try:
-        if not api_key or api_key == "YOUR_OPENAI_API_KEY_HERE":
-            st.error("Authentication Error: Please set your OpenAI API key in the script.")
+        if not openai.api_key:
+            st.error("Authentication Error: OpenAI API key not found.")
             return None
-        client = OpenAI(api_key=api_key)
-        return client
+        return OpenAI()
     except Exception as e:
         st.error(f"Error initializing OpenAI client: {str(e)}")
         return None
+
 
 def get_first_aid_advice(client, injury_description, content_type="text", image_data=None):
     try:
@@ -141,12 +138,10 @@ def get_first_aid_advice(client, injury_description, content_type="text", image_
             prompt = """You are a qualified first aid assistant..."""
             response = client.chat.completions.create(
                 model="gpt-4o",
-                messages=[
-                    {"role": "user", "content": [
-                        {"type": "text", "text": prompt},
-                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_data}"}}
-                    ]}
-                ],
+                messages=[{"role": "user", "content": [
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_data}"}}
+                ]}],
                 max_tokens=1000, temperature=0.3
             )
         else:
@@ -164,6 +159,7 @@ def get_first_aid_advice(client, injury_description, content_type="text", image_
         st.error(f"An error occurred while getting advice: {str(e)}")
         return None
 
+
 def read_uploaded_file(uploaded_file):
     try:
         if uploaded_file.type.startswith('image/'):
@@ -178,6 +174,7 @@ def read_uploaded_file(uploaded_file):
         st.error(f"Error reading file: {str(e)}")
         return None, None
 
+
 def main():
     st.markdown('''
     <div class="main-header">
@@ -186,12 +183,10 @@ def main():
     </div>
     ''', unsafe_allow_html=True)
 
-    st.markdown("""
-    <div class="emergency-box">
+    st.markdown("""<div class="emergency-box">
         <h3>🚨 In a Life-Threatening Emergency, Call for Help First!</h3>
         <p>This tool provides guidance, not a replacement for professional medical services...</p>
-    </div>
-    """, unsafe_allow_html=True)
+    </div>""", unsafe_allow_html=True)
 
     col1, col2 = st.columns([2, 1])
 
@@ -202,11 +197,7 @@ def main():
         injury_description, content_type, image_data = "", "text", None
 
         if input_method == "Text Description":
-            injury_description = st.text_area(
-                "Describe the injury in detail:",
-                height=150,
-                placeholder="Example: My friend fell and has a deep cut on their forearm. It's about 3 inches long and is bleeding steadily."
-            )
+            injury_description = st.text_area("Describe the injury in detail:", height=150, placeholder="Example: My friend fell and has a deep cut...")
         else:
             uploaded_file = st.file_uploader("Upload image or text file:", type=['txt', 'png', 'jpg', 'jpeg', 'webp'])
             if uploaded_file:
@@ -227,7 +218,7 @@ def main():
                 st.error("Input Required: Please describe the injury or upload a file.")
             else:
                 with st.spinner("🧠 AI is analyzing the situation..."):
-                    client = initialize_openai_client(OPENAI_API_KEY)
+                    client = initialize_openai_client()
                     if client:
                         advice = get_first_aid_advice(client, injury_description, content_type, image_data)
                         if advice:
@@ -235,24 +226,21 @@ def main():
                             st.markdown("---")
                             st.markdown("### 🩹 First Aid Guidance")
                             st.markdown(advice)
-                            st.markdown("""
-                            <div class="warning-box">
+                            st.markdown("""<div class="warning-box">
                                 <h4>⚠ Important Disclaimer</h4>
                                 <p>This AI-generated advice is for informational purposes only...</p>
-                            </div>
-                            """, unsafe_allow_html=True)
+                            </div>""", unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
     with col2:
         st.markdown('<div class="content-card">', unsafe_allow_html=True)
         st.markdown("### ☎ Emergency Numbers")
         st.markdown("""
-        *Know your local emergency number.*
-        - *🇮🇳 India:* 102 / 108
-        - *🇺🇸 USA/Canada:* 911
-        - *🇪🇺 Europe:* 112
-        - *🇬🇧 UK:* 999
-        - *🇦🇺 Australia:* 000
+        - 🇮🇳 India: 102 / 108  
+        - 🇺🇸 USA/Canada: 911  
+        - 🇪🇺 Europe: 112  
+        - 🇬🇧 UK: 999  
+        - 🇦🇺 Australia: 000
         """)
         st.markdown('</div>', unsafe_allow_html=True)
 
